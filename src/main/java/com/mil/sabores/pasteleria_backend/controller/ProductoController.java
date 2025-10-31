@@ -79,5 +79,16 @@ public class ProductoController {
     }
 
 
+    // 8. GET: Buscar productos por nombre (Búsqueda general)
+// Ruta: GET http://localhost:8081/api/productos/buscar/nombre?query={texto}
+    @GetMapping("/buscar/nombre")
+    @Operation(summary = "Buscar productos por nombre o parte del nombre", description = "Filtra productos que contengan el texto proporcionado en su nombre (ignora mayúsculas/minúsculas).")
+    @ApiResponse(responseCode = "200", description = "Productos encontrados")
+    public List<Producto> findByNombre(@RequestParam String query) {
+        // Usamos el método creado en el repositorio para buscar coincidencias parciales
+        return productoRepository.findByNombreContainingIgnoreCase(query);
+    }
+
+
 
 }

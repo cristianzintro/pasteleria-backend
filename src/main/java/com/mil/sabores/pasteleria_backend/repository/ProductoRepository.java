@@ -1,6 +1,5 @@
 package com.mil.sabores.pasteleria_backend.repository;
 
-
 import com.mil.sabores.pasteleria_backend.model.Producto;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
@@ -14,4 +13,7 @@ public interface ProductoRepository extends JpaRepository<Producto, String> {
 
     // 2. Buscar por Rango de Precio: Buscar donde el precio es mayor o igual a minPrice Y menor o igual a maxPrice
     List<Producto> findByPrecioBetween(int minPrice, int maxPrice);
+
+    // 3. NUEVO: Buscar por Nombre ignorando mayúsculas/minúsculas
+    List<Producto> findByNombreContainingIgnoreCase(String nombre);
 }

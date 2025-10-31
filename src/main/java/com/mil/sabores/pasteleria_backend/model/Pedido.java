@@ -6,6 +6,8 @@ import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 import lombok.AllArgsConstructor;
+import java.util.ArrayList;
+import java.util.List;
 
 import java.time.LocalDateTime;
 
@@ -16,7 +18,6 @@ import java.time.LocalDateTime;
 @Table(name = "pedidos")
 @Schema(description = "Representa una orden de compra o pedido de un cliente")
 public class Pedido {
-
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
@@ -30,9 +31,14 @@ public class Pedido {
     @Schema(description = "Monto total del pedido")
     private int total;
 
-    @Schema(description = "Detalles de los productos comprados (ej: 2xTC001, 1xTT002)")
-    @Column(columnDefinition = "TEXT") // Permite guardar texto largo
-    private String detalles;
+    // CAMBIO CLAVE: Relación OneToMany con ItemPedido
+    // CascadeType.ALL asegura que si borramos el Pedido, se borren todos sus Items.
+    // orphanRemoval=true asegura que si eliminamos un Item de la lista, se borre de la DB.
+    @OneToMany(mappedBy = "pedido", cascade = CascadeType.ALL, orphanRemoval = true)
+    @Schema(description = "Lista de productos y cantidades compradas en este pedido")
+    private List<ItemPedido> items = new ArrayList<>();
 
-    // NOTA: Para un proyecto real, necesitaríamos una relación @OneToMany con una clase ItemPedido.
+    // El constructor de Lombok debe actualizarse, o eliminar @AllArgsConstructor
+    // y usar @NoArgsConstructor junto con los setters. Por ahora, asumiremos que Lombok
+    // funciona y usaremos solo los setters.
 }
