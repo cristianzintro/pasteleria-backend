@@ -1,94 +1,74 @@
 package com.mil.sabores.pasteleria_backend.controller;
 
 import com.mil.sabores.pasteleria_backend.model.Producto;
-import com.mil.sabores.pasteleria_backend.repository.ProductoRepository; // Revisa 'Repository' con mayúscula.
-
-// --- IMPORTS DE SPRING Y SWAGGER/OPENAPI ---
-import io.swagger.v3.oas.annotations.Operation;
-import io.swagger.v3.oas.annotations.responses.ApiResponse;
+import com.mil.sabores.pasteleria_backend.service.ProductoService;
 import io.swagger.v3.oas.annotations.tags.Tag;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.web.bind.annotation.CrossOrigin;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.PathVariable;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
-import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 
 @RestController
 @RequestMapping("/api/productos")
-@Tag(name = "API de Productos", description = "Gestión de los productos de la pastelería")
-@CrossOrigin(origins = "http://localhost:3000") // Permite la comunicación con tu Frontend de React
+@CrossOrigin(origins = "*") // opcional: permite React / Android
+@Tag(name = "API de Productos", description = "Operaciones sobre productos de la pastelería")
 public class ProductoController {
 
-    @Autowired
-    private ProductoRepository productoRepository;
+    private final ProductoService service;
 
-    // 1. GET: Obtener todos los productos
-    // Ruta: GET http://localhost:8081/api/productos
+    public ProductoController(ProductoService service) {
+        this.service = service;
+    }
+
+    // =================== GET: todos ===================
     @GetMapping
-    @Operation(summary = "Obtener todos los productos", description = "Devuelve una lista de todos los productos del catálogo.")
-    @ApiResponse(responseCode = "200", description = "Productos encontrados")
-    public List<Producto> getAllProductos() {
-        return productoRepository.findAll();
+    public List<Producto> getAll() {
+        return service.listarTodos();
     }
 
-    // 2. GET: Obtener un producto por ID
-    // Ruta: GET http://localhost:8081/api/productos/{codigo}
-    @GetMapping("/{codigo}")
-    @Operation(summary = "Obtener un producto por su código", description = "Busca un producto específico usando su código (ej: TC001).")
-    @ApiResponse(responseCode = "200", description = "Producto encontrado")
-    @ApiResponse(responseCode = "404", description = "Producto no encontrado")
-    public Producto getProductoByCodigo(@PathVariable String codigo) {
-        return productoRepository.findById(codigo).orElse(null);
+    // =================== GET: por id ===================
+    @GetMapping("/{id}")
+    public ResponseEntity<Producto> getById(@PathVariable int id) {
+        return service.buscarPorId(id)
+                .map(ResponseEntity::ok)
+                .orElse(ResponseEntity.notFound().build());
     }
 
-    // 3. POST: Crear un nuevo producto
-    // Ruta: POST http://localhost:8081/api/productos
+    // =================== POST: crear ===================
     @PostMapping
-    @Operation(summary = "Crear un nuevo producto", description = "Recibe un objeto Producto y lo guarda en la base de datos.")
-    @ApiResponse(responseCode = "201", description = "Producto creado exitosamente")
-    @ApiResponse(responseCode = "400", description = "Datos de producto inválidos")
-    public Producto createProducto(@RequestBody Producto producto) {
-        // Usa 'save()' para insertar la nueva entidad
-        return productoRepository.save(producto);
+    public ResponseEntity<Producto> crear(@RequestBody Producto producto) {
+        if (service.existePorId(producto.getId())) {
+            // ya existe un producto con ese id
+            return ResponseEntity.status(HttpStatus.CONFLICT).build();
+        }
+        Producto creado = service.guardar(producto);
+        return ResponseEntity.status(HttpStatus.CREATED).body(creado);
     }
 
-    @GetMapping("/buscar/categoria")
-    @Operation(summary = "Buscar por categoría", description = "Filtra productos por el nombre de la categoría (ej: Tortas Circulares).")
-    @ApiResponse(responseCode = "200", description = "Productos filtrados encontrados")
-    public List<Producto> findByCategoria(@RequestParam String nombre) {
-        // Usamos el método creado en el repositorio
-        return productoRepository.findByCategoria(nombre);
-    }
-    // 7. GET: Buscar productos por rango de precio
-// Ruta: GET http://localhost:8081/api/productos/buscar/precio?min={minPrice}&max={maxPrice}
-    @GetMapping("/buscar/precio")
-    @Operation(summary = "Buscar por rango de precio", description = "Filtra productos entre un precio mínimo y uno máximo.")
-    @ApiResponse(responseCode = "200", description = "Productos dentro del rango de precio encontrados")
-    public List<Producto> findByPrecioBetween(
-            @RequestParam int min,
-            @RequestParam int max) {
+    // =================== PUT: actualizar ===================
+    @PutMapping("/{id}")
+    public ResponseEntity<Producto> actualizar(
+            @PathVariable int id,
+            @RequestBody Producto producto) {
 
-        // Usamos el método creado en el repositorio
-        return productoRepository.findByPrecioBetween(min, max);
+        if (!service.existePorId(id)) {
+            return ResponseEntity.notFound().build();
+        }
+
+        // aseguramos que se actualice el id correcto
+        producto.setId(id);
+        Producto actualizado = service.guardar(producto);
+        return ResponseEntity.ok(actualizado);
     }
 
-
-    // 8. GET: Buscar productos por nombre (Búsqueda general)
-// Ruta: GET http://localhost:8081/api/productos/buscar/nombre?query={texto}
-    @GetMapping("/buscar/nombre")
-    @Operation(summary = "Buscar productos por nombre o parte del nombre", description = "Filtra productos que contengan el texto proporcionado en su nombre (ignora mayúsculas/minúsculas).")
-    @ApiResponse(responseCode = "200", description = "Productos encontrados")
-    public List<Producto> findByNombre(@RequestParam String query) {
-        // Usamos el método creado en el repositorio para buscar coincidencias parciales
-        return productoRepository.findByNombreContainingIgnoreCase(query);
+    // =================== DELETE: eliminar ===================
+    @DeleteMapping("/{id}")
+    public ResponseEntity<Void> eliminar(@PathVariable int id) {
+        if (!service.existePorId(id)) {
+            return ResponseEntity.notFound().build();
+        }
+        service.eliminarPorId(id);
+        return ResponseEntity.noContent().build();
     }
-
-
-
 }
